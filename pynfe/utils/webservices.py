@@ -125,9 +125,10 @@ NFCE = {
 	    	'CHAVE': '',
 	    	'INUTILIZACAO': '',
 	    	'EVENTOS': '',
-	    	'QR': ''
-	    	# qr homologacao ​http://nfcehomolog.sefaz.pe.gov.br/nfce-web/consultarNFCe
-	    	# qr producao ​http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe
+	    	'QR': 'sefaz.pe.gov.br/nfce-web/consultarNFCe?',
+	    	'HTTPS': 'http://nfce.',
+	    	'HOMOLOGACAO': 'http://nfcehomolog.',
+	    	'URL': 'sefaz.pe.gov.br/nfce-web/consultarNFCe'
 	    },
 	    'AL': {
 	    	'STATUS': '',
@@ -281,10 +282,8 @@ NFE = {
 		'AN': {
 	    	'EVENTOS': 'nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx',	# versao: 4.00
 	    	'DISTRIBUICAO': 'nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
-	    	'DOWNLOAD': 'nfe.fazenda.gov.br/NfeDownloadNF/NfeDownloadNF.asmx', 				# versao: 2.00/3.10
-	    	'DESTINADAS': 'nfe.fazenda.gov.br/NFeConsultaDest/NFeConsultaDest.asmx',		# versao: 2.00/3.10
-	    	'HTTPS': 'https://www.',
-	    	'HOMOLOGACAO': 'https://hom.'
+	    	'HTTPS': 'https://www',
+	    	'HOMOLOGACAO': 'https://hom'
 	    },
 	    'AM': {
 	    	'STATUS': 'nfe.sefaz.am.gov.br/services2/services/NfeStatusServico2',

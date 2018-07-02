@@ -261,7 +261,7 @@ class SerializacaoXML(Serializacao):
         icms = etree.SubElement(imposto, 'ICMS')
         icms_csosn = ('102', '103', '300', '400')
         if produto_servico.icms_modalidade in icms_csosn:
-            icms_item = etree.SubElement(icms, 'ICMSSN'+produto_servico.icms_modalidade)
+            icms_item = etree.SubElement(icms, 'ICMSSN102')
             etree.SubElement(icms_item, 'orig').text = str(produto_servico.icms_origem)
             etree.SubElement(icms_item, 'CSOSN').text = produto_servico.icms_csosn
         elif produto_servico.icms_modalidade == '101':
@@ -278,6 +278,10 @@ class SerializacaoXML(Serializacao):
             etree.SubElement(icms_item, 'vICMSSTRet').text = ''     # Informar o valor do ICMS ST retido na UF remetente
             etree.SubElement(icms_item, 'vBCSTDest').text = ''      # Informar o valor da BC do ICMS ST da UF destino
             etree.SubElement(icms_item, 'vICMSSTDest').text = ''    # Informar o valor do ICMS ST da UF destino
+        elif produto_servico.icms_modalidade == '500':
+            icms_item = etree.SubElement(icms, 'ICMSSN'+produto_servico.icms_modalidade)
+            etree.SubElement(icms_item, 'orig').text = str(produto_servico.icms_origem)
+            etree.SubElement(icms_item, 'CSOSN').text = produto_servico.icms_csosn
         else:
             ### OUTROS TIPOS DE ICMS (00,10,20)
             icms_item = etree.SubElement(icms, 'ICMS'+produto_servico.icms_modalidade)
@@ -305,13 +309,17 @@ class SerializacaoXML(Serializacao):
                 etree.SubElement(icms_item, 'vICMSST ').text = str(produto_servico.icms_st_valor)
             # 20=Com redução de base de cálculo
             elif produto_servico.icms_modalidade == '20':
-                etree.SubElement(icms_item, 'pRedBC').text = str(produto_servico.icms_percentual_reducao_bc)  # Percentual da Redução de BC
+                etree.SubElement(icms_item, 'pRedBC').text = '{:.2f}'.format(produto_servico.icms_percentual_reducao_bc or 0)  # Percentual da Redução de BC
                 etree.SubElement(icms_item, 'vBC').text = '{:.2f}'.format(produto_servico.icms_valor_base_calculo or 0)  # Valor da BC do ICMS 
-                etree.SubElement(icms_item, 'pICMS').text = str(produto_servico.icms_aliquota)          # Alíquota do imposto
-                etree.SubElement(icms_item, 'vICMS').text = '{:.2f}'.format(produto_servico.icms_valor or 0)  # Valor do ICMS 
-                etree.SubElement(icms_item, 'vBCFCP').text = '{:.2f}'.format(produto_servico.fcp_base_calculo)  # Base de calculo FCP
-                etree.SubElement(icms_item, 'pFCP').text = '{:.2f}'.format(produto_servico.fcp_percentual)  # Percentual FCP 
-                etree.SubElement(icms_item, 'vFCP').text = '{:.2f}'.format(produto_servico.fcp_valor)  # Valor Fundo Combate a Pobreza 
+                etree.SubElement(icms_item, 'pICMS').text = '{:.2f}'.format(produto_servico.icms_aliquota or 0)          # Alíquota do imposto
+                etree.SubElement(icms_item, 'vICMS').text = '{:.2f}'.format(produto_servico.icms_valor or 0)  # Valor do ICMS
+                # NT_2016_002
+                # Inclusão das regras de validação N17b-20, N23b-20 e N27b-20 que impedem que seja informado zero como percentual de FCP ou FCP ST. 
+                # Os campos relativos ao Fundo de Combate à Pobreza só devem ser informados se o produto estiver sujeito a incidência do mesmo.
+                if produto_servico.fcp_valor:  
+                    etree.SubElement(icms_item, 'vBCFCP').text = '{:.2f}'.format(produto_servico.fcp_base_calculo or 0)  # Base de calculo FCP
+                    etree.SubElement(icms_item, 'pFCP').text = '{:.2f}'.format(produto_servico.fcp_percentual or 0)  # Percentual FCP 
+                    etree.SubElement(icms_item, 'vFCP').text = '{:.2f}'.format(produto_servico.fcp_valor or 0)  # Valor Fundo Combate a Pobreza 
             # Impostos não implementados
             else:
                 raise NotImplementedError
@@ -579,40 +587,44 @@ class SerializacaoXML(Serializacao):
             if nota_fiscal.transporte_volumes:
                 for volume in nota_fiscal.transporte_volumes:
                     vol = etree.SubElement(transp, 'vol')
-                    etree.SubElement(vol, 'qVol').text = str(volume.quantidade)
-                    etree.SubElement(vol, 'esp').text = volume.especie
-                    if volume.marca:
-                        etree.SubElement(vol, 'marca').text = volume.marca
-                    if volume.numeracao:
-                        etree.SubElement(vol, 'nVol').text = volume.numeracao
-                    etree.SubElement(vol, 'pesoL').text = str(volume.peso_liquido)
-                    etree.SubElement(vol, 'pesoB').text = str(volume.peso_bruto)
+                    if volume.quantidade:
+                        etree.SubElement(vol, 'qVol').text = str(volume.quantidade)
+                        etree.SubElement(vol, 'esp').text = volume.especie
+                        if volume.marca:
+                            etree.SubElement(vol, 'marca').text = volume.marca
+                        if volume.numeracao:
+                            etree.SubElement(vol, 'nVol').text = volume.numeracao
+                        etree.SubElement(vol, 'pesoL').text = str(volume.peso_liquido)
+                        etree.SubElement(vol, 'pesoB').text = str(volume.peso_bruto)
 
-                    # Lacres
-                    if volume.lacres:
-                        lacres = etree.SubElement(vol, 'lacres')
-                        for lacre in volume.lacres:
-                            etree.SubElement(lacres, 'nLacre').text = lacre.numero_lacre
+                        # Lacres
+                        if volume.lacres:
+                            lacres = etree.SubElement(vol, 'lacres')
+                            for lacre in volume.lacres:
+                                etree.SubElement(lacres, 'nLacre').text = lacre.numero_lacre
 
         # Pagamento
         """ Obrigatório o preenchimento do Grupo Informações de Pagamento para NF-e e NFC-e. 
         Para as notas com finalidade de Ajuste ou Devolução o campo Forma de Pagamento deve ser preenchido com 90=Sem Pagamento. """
         pag = etree.SubElement(raiz, 'pag')
         detpag = etree.SubElement(pag, 'detPag')
-        etree.SubElement(detpag, 'tPag').text = str(nota_fiscal.tipo_pagamento).zfill(2)
-        etree.SubElement(detpag, 'vPag').text = '{:.2f}'.format(nota_fiscal.totais_icms_total_nota)
-        if nota_fiscal.tipo_pagamento == 3 or nota_fiscal.tipo_pagamento == 4:
-            cartao = etree.SubElement(detpag, 'card')
-            """ Tipo de Integração do processo de pagamento com o sistema de automação da empresa:
-                1=Pagamento integrado com o sistema de automação da empresa (Ex.: equipamento TEF, Comércio Eletrônico);
-                2= Pagamento não integrado com o sistema de automação da empresa (Ex.: equipamento POS);
-            """
-            etree.SubElement(cartao, 'tpIntegra').text = '2'
-            #etree.SubElement(cartao, 'CNPJ').text = '' # Informar o CNPJ da Credenciadora de cartão de crédito / débito
-            #etree.SubElement(cartao, 'tBand').text = '' # 01=Visa 02=Mastercard 03=American Express 04=Sorocred 05=Diners Club 06=Elo 07=Hipercard 08=Aura 09=Caba 99=Outros
-            #etree.SubElement(cartao, 'cAut').text = '' # Identifica o número da autorização da transação da operação com cartão de crédito e/ou débito
-        # troco
-        # etree.SubElement(pag, 'vTroco').text = str('')
+        if nota_fiscal.finalidade_emissao == 3 or nota_fiscal.finalidade_emissao == 4:
+            etree.SubElement(detpag, 'tPag').text = '90'
+        else: 
+            etree.SubElement(detpag, 'tPag').text = str(nota_fiscal.tipo_pagamento).zfill(2)
+            etree.SubElement(detpag, 'vPag').text = '{:.2f}'.format(nota_fiscal.totais_icms_total_nota)
+            if nota_fiscal.tipo_pagamento == 3 or nota_fiscal.tipo_pagamento == 4:
+                cartao = etree.SubElement(detpag, 'card')
+                """ Tipo de Integração do processo de pagamento com o sistema de automação da empresa:
+                    1=Pagamento integrado com o sistema de automação da empresa (Ex.: equipamento TEF, Comércio Eletrônico);
+                    2= Pagamento não integrado com o sistema de automação da empresa (Ex.: equipamento POS);
+                """
+                etree.SubElement(cartao, 'tpIntegra').text = '2'
+                #etree.SubElement(cartao, 'CNPJ').text = '' # Informar o CNPJ da Credenciadora de cartão de crédito / débito
+                #etree.SubElement(cartao, 'tBand').text = '' # 01=Visa 02=Mastercard 03=American Express 04=Sorocred 05=Diners Club 06=Elo 07=Hipercard 08=Aura 09=Caba 99=Outros
+                #etree.SubElement(cartao, 'cAut').text = '' # Identifica o número da autorização da transação da operação com cartão de crédito e/ou débito
+            # troco
+            # etree.SubElement(pag, 'vTroco').text = str('')
 
         # Informações adicionais
         if nota_fiscal.informacoes_adicionais_interesse_fisco or nota_fiscal.informacoes_complementares_interesse_contribuinte:
@@ -718,10 +730,10 @@ class SerializacaoQrcode(object):
         else:
             if tpamb == '1':
                 qrcode = NFCE[uf.upper()]['HTTPS'] + NFCE[uf.upper()]['QR'] + url
-                url_chave = NFCE[uf.upper()]['HTTPS'] + NFCE[uf.upper()]['URL'] + url
+                url_chave = NFCE[uf.upper()]['HTTPS'] + NFCE[uf.upper()]['URL']
             else:
                 qrcode = NFCE[uf.upper()]['HOMOLOGACAO'] + NFCE[uf.upper()]['QR'] + url
-                url_chave = NFCE[uf.upper()]['HOMOLOGACAO'] + NFCE[uf.upper()]['URL'] + url
+                url_chave = NFCE[uf.upper()]['HOMOLOGACAO'] + NFCE[uf.upper()]['URL']
         # adicionta tag infNFeSupl com qrcode
         info = etree.Element('infNFeSupl')
         etree.SubElement(info, 'qrCode').text = '<![CDATA['+ qrcode.strip() + ']]>'
